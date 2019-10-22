@@ -9,7 +9,7 @@ Einfach ein dummes create-react-app mit sip.js.
 
 ### TODO
 Wir müssen bei `trackAdded` den Audio Stream über den Websocket zum Server schicken.
-`useTranscribe` ist euer Freund
+`useSpeech` ist euer Freund
 
 
 ## server
