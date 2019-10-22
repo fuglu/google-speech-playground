@@ -46,13 +46,13 @@ export const usePresence = (userAgent?: UA) => {
   return presence;
 };
 
-export const useAudio = (session?: Session) => {
+export const useBrowserAudio = (session?: Session) => {
   useEffect(() => {
     if (!session) {
       return;
     }
 
-    session.on("trackAdded", function() {
+    session.on("trackAdded", () => {
       const remoteAudio = document.createElement("audio");
       const localAudio = document.createElement("audio");
 
@@ -64,7 +64,6 @@ export const useAudio = (session?: Session) => {
       localAudio.srcObject = localStream;
       localAudio.play();
 
-      // @ts-ignore
       const peerConnection: RTCPeerConnection =
         // @ts-ignore
         session.sessionDescriptionHandler.peerConnection;
@@ -78,71 +77,91 @@ export const useAudio = (session?: Session) => {
   }, [session]);
 };
 
-export const useSpeech = (session?: Session) => {
-  const [text, setText] = useState("");
+interface Track {
+  id: string;
+  text: string;
+}
+
+export const useText = (session?: Session) => {
+  const [local, setLocal] = useState("");
+  const [remote, setRemote] = useState("");
 
   useEffect(() => {
     if (!session) {
       return;
     }
 
-    session.on("trackAdded", async function() {
-      // @ts-ignore
+    session.on("trackAdded", () => {
       const peerConnection: RTCPeerConnection =
         // @ts-ignore
         session.sessionDescriptionHandler.peerConnection;
 
+      const localStream = new MediaStream();
+      peerConnection.getSenders().forEach(sender => {
+        console.log("sender params", sender.getParameters());
+        if (sender.track) {
+          console.log("sender settings", sender.track.getSettings());
+          localStream.addTrack(sender.track);
+        }
+      });
       const remoteStream = new MediaStream();
-      peerConnection.getReceivers().forEach(function(receiver) {
+      peerConnection.getReceivers().forEach(receiver => {
+        console.log("recv params", receiver.getParameters());
+        console.log("recv params", receiver.track.getSettings());
         remoteStream.addTrack(receiver.track);
       });
-      const localStream = new MediaStream();
-      peerConnection.getSenders().forEach(function(sender) {
-        if (sender.track) localStream.addTrack(sender.track);
-      });
 
-      // TODO send media to google speech
-      sendAudio(localStream);
-      sendAudio(remoteStream);
-      setText("foo");
+      const closeLocalSocket = transcribe(localStream, setLocal);
+      const closeRemoteSocket = transcribe(remoteStream, setRemote);
+
+      session.on("terminated", closeLocalSocket);
+      session.on("terminated", closeRemoteSocket);
     });
-  }, [session]);
+  }, [session, setLocal, setRemote]);
 
-  return text;
+  return { local, remote };
 };
 
-export const sendAudio = (stream: MediaStream) => {
-  var socket = new WebSocket("ws://localhost:12345/");
-
-  socket.binaryType = "arraybuffer";
-  socket.onopen = function() {
-    socket.send("my dirty little secret");
-  };
-
-  const audioContext = new AudioContext();
-  var script = audioContext.createScriptProcessor(4096, 1, 1);
-
-  script.onaudioprocess = function(event) {
-    var input = event.inputBuffer.getChannelData(0) || new Float32Array(4096);
-
-    for (var idx = input.length, newData = new Int16Array(idx); idx--; )
-      newData[idx] = 32767 * Math.min(1, input[idx]);
-
-    if (socket.readyState === 1) {
-      // console.log(newData);
-      // socket.send(newData.buffer);
-      socket.send(newData);
-    }
-  };
-
-  socket.onmessage = function(b) {
-    const data = JSON.parse(b.data);
-    console.log(data);
-  };
-
+export const transcribe = (
+  stream: MediaStream,
+  onText: (text: string) => void
+) => {
   try {
-    var mic = audioContext.createMediaStreamSource(stream);
-    mic.connect(script);
-    script.connect(audioContext.destination);
-  } catch {}
+    const audioContext = new AudioContext();
+    const audio = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    const socket = new WebSocket("ws://localhost:12345/");
+
+    // Init websocket
+    socket.binaryType = "arraybuffer";
+    socket.onopen = () => {
+      socket.send("my dirty little secret");
+    };
+    socket.onmessage = b => {
+      const data = JSON.parse(b.data);
+      console.log(data.text);
+      onText(data.text);
+    };
+
+    // Init audio upload
+    audio.connect(processor);
+    processor.connect(audioContext.destination);
+    processor.onaudioprocess = event => {
+      var input = event.inputBuffer.getChannelData(0) || new Float32Array(4096);
+
+      for (var idx = input.length, newData = new Int16Array(idx); idx--; )
+        newData[idx] = 32767 * Math.min(1, input[idx]);
+
+      if (socket.readyState === 1) {
+        // console.log(newData);
+        // socket.send(newData.buffer);
+        socket.send(newData);
+      }
+    };
+    return () => socket.close();
+  } catch (error) {
+    console.error(error);
+  }
+
+  return () => {};
 };

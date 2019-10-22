@@ -1,34 +1,39 @@
 import React, { ChangeEvent, useState } from "react";
 import { Session } from "sip.js";
 import {
-  sendAudio,
-  useAudio,
+  transcribe,
+  useBrowserAudio,
   usePresence,
-  useSpeech,
+  useText,
   useUserAgent
 } from "./hooks/sip";
+
+const onChange = (set: (text: string) => void) => (
+  e: ChangeEvent<HTMLInputElement>
+) => {
+  set(e.target.value);
+};
 
 const App: React.FC = () => {
   const [username, setUsername] = useState("2617685e0");
   const [password, setPassword] = useState("bNNxYhTZPuFS");
   const [number, setNumber] = useState("01787777973");
   const [session, setSession] = useState<Session>();
+  const [mic, setMic] = useState("");
   const ua = useUserAgent(username, password);
   const isOnline = usePresence(ua);
-  const text = useSpeech(session);
-  useAudio(session);
+  const speech = useText(session);
+  useBrowserAudio(session);
 
-  const useMic = () => {
-    navigator.mediaDevices
-      .getUserMedia({ audio: true, video: false })
-      .then(sendAudio)
-      .catch(error => console.error(error));
-  };
+  const useMic = async () => {
+    const session = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false
+    });
 
-  const onChange = (set: (text: string) => void) => (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    set(e.target.value);
+    transcribe(session, text => {
+      setMic(text);
+    });
   };
 
   const onCall = () => {
@@ -63,7 +68,9 @@ const App: React.FC = () => {
         <input type="text" value={number} onChange={onChange(setNumber)} />
         <button onClick={onCall}>Call</button>
       </div>
-      <div>{text}</div>
+      <div>{mic}</div>
+      <div>{speech.local}</div>
+      <div>{speech.remote}</div>
     </div>
   );
 };

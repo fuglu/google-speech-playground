@@ -24,6 +24,9 @@ const recognizeStream = (ws: WebSocket) => {
     .on("error", console.error)
     .on("data", (data: any) => {
       if (data.results && data.results[0]) {
+        console.log(data);
+        console.log(data.results[0].alternatives);
+        console.log(data.results[0].isFinal);
         ws.send(
           JSON.stringify({
             isFinal: data.results[0].isFinal,
