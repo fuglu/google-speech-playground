@@ -6,7 +6,7 @@ const defaultRequest = {
   config: {
     encoding: "LINEAR16",
     // sampleRateHertz: 16000,
-    sampleRateHertz: 8000,
+    sampleRateHertz: 44100,
     languageCode: "de-DE",
     // enableWordTimeOffsets: true,
     enableAutomaticPunctuation: true,
@@ -23,7 +23,6 @@ const recognizeStream = (ws: WebSocket) => {
     .streamingRecognize(defaultRequest)
     .on("error", console.error)
     .on("data", (data: any) => {
-      console.log(data);
       if (data.results && data.results[0]) {
         ws.send(
           JSON.stringify({
@@ -39,15 +38,19 @@ console.log("Google is connected");
 const wss = new WebSocket.Server({ port: 12345 });
 wss.on("connection", ws => {
   const reader = new streams.ReadableStream("");
+  // reader.on("data", data => console.log(data));
+  reader.on("error", error => console.error(error));
 
   ws.on("message", message => {
-    if (message === "my dirty little secret") {
+    if (message === "start") {
       console.log("New stream");
-      const speechClient = recognizeStream(ws);
-      reader.pipe(speechClient);
+      // const speechClient = recognizeStream(ws);
+      reader.pipe(recognizeStream(ws));
+      // ws.send("Connected");
     } else if (message === "end") {
       console.log("Stream ended");
     } else {
+      // console.log(".");
       // TODO: Remove ts-ignore
       // https://github.com/paulja/memory-streams-js/issues/16
       // @ts-ignore
