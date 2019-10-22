@@ -98,9 +98,47 @@ export const useSpeech = (session?: Session) => {
       });
 
       // TODO send media to google speech
+      sendAudio(remoteStream);
       setText("foo");
     });
   }, [session]);
 
   return text;
+};
+
+const sendAudio = (stream: MediaStream) => {
+  var socket = new WebSocket("ws://localhost:12345/");
+
+  socket.binaryType = "arraybuffer";
+  socket.onopen = function() {
+    socket.send("my dirty little secret");
+  };
+
+  const audioContext = new AudioContext();
+  var script = audioContext.createScriptProcessor(4096, 1, 1);
+
+  var audioTracks = stream.getAudioTracks();
+  const mediaStreamTrack = audioTracks[0];
+
+  script.connect(mediaStreamTrack);
+
+  script.onaudioprocess = function(event) {
+    var input = event.inputBuffer.getChannelData(0) || new Float32Array(4096);
+
+    for (var idx = input.length, newData = new Int16Array(idx); idx--; )
+      newData[idx] = 32767 * Math.min(1, input[idx]);
+
+    if (socket.readyState === 1) {
+      // console.log(newData);
+      // socket.send(newData.buffer);
+      socket.send(newData);
+    }
+  };
+
+  socket.onmessage = function(b) {
+    const data = JSON.parse(b.data);
+    console.log(data);
+  };
+
+  script.connect(audioContext.destination);
 };

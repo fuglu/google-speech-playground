@@ -6,7 +6,7 @@ const defaultRequest = {
   config: {
     encoding: "LINEAR16",
     // sampleRateHertz: 16000,
-    sampleRateHertz: 44100,
+    sampleRateHertz: 8000,
     languageCode: "de-DE",
     // enableWordTimeOffsets: true,
     enableAutomaticPunctuation: true,
@@ -17,11 +17,13 @@ const defaultRequest = {
 };
 const client = new Speech.SpeechClient();
 
-const recognizeStream = (ws: WebSocket) =>
-  client
+const recognizeStream = (ws: WebSocket) => {
+  console.log("Creating Google Speech Client");
+  return client
     .streamingRecognize(defaultRequest)
     .on("error", console.error)
     .on("data", (data: any) => {
+      console.log(data);
       if (data.results && data.results[0]) {
         ws.send(
           JSON.stringify({
@@ -31,6 +33,7 @@ const recognizeStream = (ws: WebSocket) =>
         );
       }
     });
+};
 console.log("Google is connected");
 
 const wss = new WebSocket.Server({ port: 12345 });
@@ -40,7 +43,8 @@ wss.on("connection", ws => {
   ws.on("message", message => {
     if (message === "my dirty little secret") {
       console.log("New stream");
-      reader.pipe(recognizeStream(ws));
+      const speechClient = recognizeStream(ws);
+      reader.pipe(speechClient);
     } else if (message === "end") {
       console.log("Stream ended");
     } else {
