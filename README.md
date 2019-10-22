@@ -16,6 +16,8 @@ Wir müssen bei `trackAdded` den Audio Stream über den Websocket zum Server sch
 
 Stumpfer Websocket Server, der Audio zu `@google-cloud/speech` streamt und den Text zurück gibt.
 
+**Hint: Google Speech API KEY ist im CLINQ 1password**
+
 ### TODO
 
 Credentials File für Google Speech API vermuffen.
