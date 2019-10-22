@@ -1,6 +1,12 @@
 import React, { ChangeEvent, useState } from "react";
 import { Session } from "sip.js";
-import { useAudio, usePresence, useSpeech, useUserAgent } from "./hooks/sip";
+import {
+  sendAudio,
+  useAudio,
+  usePresence,
+  useSpeech,
+  useUserAgent
+} from "./hooks/sip";
 
 const App: React.FC = () => {
   const [username, setUsername] = useState("2617685e0");
@@ -11,6 +17,13 @@ const App: React.FC = () => {
   const isOnline = usePresence(ua);
   const text = useSpeech(session);
   useAudio(session);
+
+  const useMic = () => {
+    navigator.mediaDevices
+      .getUserMedia({ audio: true, video: false })
+      .then(sendAudio)
+      .catch(error => console.error(error));
+  };
 
   const onChange = (set: (text: string) => void) => (
     e: ChangeEvent<HTMLInputElement>
@@ -37,6 +50,7 @@ const App: React.FC = () => {
   return (
     <div>
       {isOnline && <p>Online</p>}
+      <button onClick={useMic}>Mic</button>
       <div>
         <input type="text" value={username} onChange={onChange(setUsername)} />
         <input

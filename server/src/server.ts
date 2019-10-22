@@ -42,7 +42,7 @@ wss.on("connection", ws => {
   reader.on("error", error => console.error(error));
 
   ws.on("message", message => {
-    if (message === "start") {
+    if (message === "my dirty little secret") {
       console.log("New stream");
       // const speechClient = recognizeStream(ws);
       reader.pipe(recognizeStream(ws));

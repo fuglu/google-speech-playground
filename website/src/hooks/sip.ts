@@ -96,8 +96,13 @@ export const useSpeech = (session?: Session) => {
       peerConnection.getReceivers().forEach(function(receiver) {
         remoteStream.addTrack(receiver.track);
       });
+      const localStream = new MediaStream();
+      peerConnection.getSenders().forEach(function(sender) {
+        if (sender.track) localStream.addTrack(sender.track);
+      });
 
       // TODO send media to google speech
+      sendAudio(localStream);
       sendAudio(remoteStream);
       setText("foo");
     });
@@ -106,7 +111,7 @@ export const useSpeech = (session?: Session) => {
   return text;
 };
 
-const sendAudio = (stream: MediaStream) => {
+export const sendAudio = (stream: MediaStream) => {
   var socket = new WebSocket("ws://localhost:12345/");
 
   socket.binaryType = "arraybuffer";
@@ -116,11 +121,6 @@ const sendAudio = (stream: MediaStream) => {
 
   const audioContext = new AudioContext();
   var script = audioContext.createScriptProcessor(4096, 1, 1);
-
-  var audioTracks = stream.getAudioTracks();
-  const mediaStreamTrack = audioTracks[0];
-
-  script.connect(mediaStreamTrack);
 
   script.onaudioprocess = function(event) {
     var input = event.inputBuffer.getChannelData(0) || new Float32Array(4096);
@@ -140,5 +140,9 @@ const sendAudio = (stream: MediaStream) => {
     console.log(data);
   };
 
-  script.connect(audioContext.destination);
+  try {
+    var mic = audioContext.createMediaStreamSource(stream);
+    mic.connect(script);
+    script.connect(audioContext.destination);
+  } catch {}
 };
