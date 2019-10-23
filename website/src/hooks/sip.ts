@@ -111,11 +111,19 @@ export const useText = (session?: Session) => {
         remoteStream.addTrack(receiver.track);
       });
 
-      const closeLocalSocket = transcribe(localStream, setLocal);
-      const closeRemoteSocket = transcribe(remoteStream, setRemote);
+      const localSocket = transcribe(localStream, setLocal);
+      const remoteSocket = transcribe(remoteStream, setRemote);
 
-      session.on("terminated", closeLocalSocket);
-      session.on("terminated", closeRemoteSocket);
+      session.on("terminated", () => {
+        if (localSocket) {
+          localSocket.send("end");
+          localSocket.close();
+        }
+        if (remoteSocket) {
+          remoteSocket.send("end");
+          remoteSocket.close();
+        }
+      });
     });
   }, [session, setLocal, setRemote]);
 
@@ -158,10 +166,10 @@ export const transcribe = (
         socket.send(newData);
       }
     };
-    return () => socket.close();
+    return socket;
   } catch (error) {
     console.error(error);
   }
 
-  return () => {};
+  return undefined;
 };

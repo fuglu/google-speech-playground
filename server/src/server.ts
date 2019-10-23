@@ -44,7 +44,7 @@ wss.on("connection", ws => {
     if (message === "my dirty little secret") {
       console.log("New stream");
       // const speechClient = recognizeStream(ws);
-      reader.pipe(recognizeStream(ws));
+      reader.pipe(recognizeStream);
       // ws.send("Connected");
     } else if (message === "end") {
       console.log("Stream ended");
