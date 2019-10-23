@@ -17,9 +17,13 @@ const defaultRequest = {
 };
 const client = new Speech.SpeechClient();
 
-const recognizeStream = (ws: WebSocket) => {
-  console.log("Creating Google Speech Client");
-  return client
+const wss = new WebSocket.Server({ port: 12345 });
+wss.on("connection", ws => {
+  const reader = new streams.ReadableStream("");
+  // reader.on("data", data => console.log(data));
+  reader.on("error", error => console.error(error));
+
+  const recognizeStream = client
     .streamingRecognize(defaultRequest)
     .on("error", console.error)
     .on("data", (data: any) => {
@@ -35,15 +39,7 @@ const recognizeStream = (ws: WebSocket) => {
         );
       }
     });
-};
-console.log("Google is connected");
-
-const wss = new WebSocket.Server({ port: 12345 });
-wss.on("connection", ws => {
-  const reader = new streams.ReadableStream("");
-  // reader.on("data", data => console.log(data));
-  reader.on("error", error => console.error(error));
-
+  console.log("Google is connected");
   ws.on("message", message => {
     if (message === "my dirty little secret") {
       console.log("New stream");
@@ -52,6 +48,7 @@ wss.on("connection", ws => {
       // ws.send("Connected");
     } else if (message === "end") {
       console.log("Stream ended");
+      recognizeStream.destroy();
     } else {
       // console.log(".");
       // TODO: Remove ts-ignore
